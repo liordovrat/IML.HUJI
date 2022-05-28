@@ -39,7 +39,14 @@ class DecisionStump(BaseEstimator):
         y : ndarray of shape (n_samples, )
             Responses of input data to fit to
         """
-        raise NotImplementedError()
+        min_e = np.inf
+        for sign, j in product([-1, 1], range(X.shape[1])):
+            threshold, err = self._find_threshold(X[:, j], y, sign)
+            if err < min_e:
+                min_e = err
+                self.threshold_ = threshold
+                self.sign_ = sign
+                self.j_ = j
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -63,7 +70,8 @@ class DecisionStump(BaseEstimator):
         Feature values strictly below threshold are predicted as `-sign` whereas values which equal
         to or above the threshold are predicted as `sign`
         """
-        raise NotImplementedError()
+
+        return self.sign_ * ((X[:, self.j_] >= self.threshold_) * 2 - 1)
 
     def _find_threshold(self, values: np.ndarray, labels: np.ndarray, sign: int) -> Tuple[float, float]:
         """
@@ -95,7 +103,15 @@ class DecisionStump(BaseEstimator):
         For every tested threshold, values strictly below threshold are predicted as `-sign` whereas values
         which equal to or above the threshold are predicted as `sign`
         """
-        raise NotImplementedError()
+        sort_idx = np.argsort(values)
+        values, labels = values[sort_idx], labels[sort_idx]
+
+        thresholds = np.concatenate([[-np.inf], (values[1:] + values[:-1]) / 2, [np.inf]])
+        minimal_theta_loss = np.sum(np.abs(labels[np.sign(labels) != sign]))
+        losses = np.append(minimal_theta_loss, minimal_theta_loss + np.cumsum(labels * sign))
+
+        min_loss_idx = np.argmin(losses)
+        return thresholds[min_loss_idx], losses[min_loss_idx]
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
@@ -114,4 +130,5 @@ class DecisionStump(BaseEstimator):
         loss : float
             Performance under missclassification loss function
         """
-        raise NotImplementedError()
+        from ...metrics import misclassification_error
+        return misclassification_error(y, self.predict(X))
