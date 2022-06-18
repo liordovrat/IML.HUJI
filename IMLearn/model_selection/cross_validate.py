@@ -37,4 +37,43 @@ def cross_validate(estimator: BaseEstimator, X: np.ndarray, y: np.ndarray,
     validation_score: float
         Average validation score over folds
     """
-    raise NotImplementedError()
+
+    # split the data into cv folds
+    x_folds = np.array_split(X, cv)
+    y_folds = np.array_split(y, cv)
+
+    train_score_arr = []
+    validation_score_arr = []
+
+    # fit on each fold and Callback on each fold
+    for i in range(cv):
+        # organize train_data and test_data
+        x_temp = np.delete(x_folds, i, axis=0)
+        train_data_x = np.concatenate(x_temp)
+        test_data_x = x_folds[i]
+
+        y_temp = np.delete(y_folds, i, axis=0)
+        train_data_y = np.concatenate(y_temp)
+        test_data_y = y_folds[i]
+
+        # fit
+        estimator.fit(train_data_x, train_data_y)
+
+        # update score arrays
+        train_score_arr.append(scoring(train_data_y, estimator.predict(train_data_x)))
+        validation_score_arr.append(scoring(test_data_y, estimator.predict(test_data_x)))
+
+    # return average train score and validation_score
+    return np.array(train_score_arr).mean(), np.array(validation_score_arr).mean()
+
+
+
+
+
+
+
+
+
+
+
+
